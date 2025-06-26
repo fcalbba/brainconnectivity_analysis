@@ -44,9 +44,13 @@ python src/main.py \
   --post_off-subj <ID post DBS OFF> \
   --out-dir results/
 
-  # Requirements:
-- Python >= 3.12
-- WSL
+# Requirements:
+bctpy==0.6.1
+h5py==3.13.0
+matplotlib==3.8.4
+nibabel==5.3.2
+numpy==2.3.1
+scipy==1.16.0
 
 # Context
 This pipeline was developed as part of a Master's thesis project to investigate how DBS modulates brain connectivity patterns.
