@@ -39,9 +39,9 @@ This repository contains a complete pipeline for analyzing brain functional and 
 # How to run:
 python src/main.py \
   --atlas path/to/atlas.nii.gz \
-  --pre-subj <ID pre DBS> \
-  --post_on-subj <ID post DBS ON> \
-  --post_off-subj <ID post DBS OFF> \
+  --pre-subj [ID pre DBS] \
+  --post_on-subj [ID post DBS ON] \
+  --post_off-subj [ID post DBS OFF] \
   --out-dir results/
 
 # Requirements:
