@@ -1,5 +1,5 @@
 # brainconnectivity_analysis
-This repository contains a complete pipeline for analyzing brain functional and structural connectivity in subjects undergoing Deep Brain Stimulation (DBS). It evaluates tree experimental conditions: Pre-DBS, Post-DBS ON, and Post-DBS OFF.
+This repository contains a complete pipeline for analyzing brain functional and structural connectivity in subjects undergoing Deep Brain Stimulation (DBS). It evaluates three experimental conditions: Pre-DBS, Post-DBS ON, and Post-DBS OFF.
 
 # Project structure:
 
