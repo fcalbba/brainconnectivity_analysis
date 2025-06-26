@@ -45,11 +45,11 @@ python src/main.py \
   --out-dir results/
 
 # Requirements:
-bctpy==0.6.1
-h5py==3.13.0
-matplotlib==3.8.4
-nibabel==5.3.2
-numpy==2.3.1
+bctpy==0.6.1 \
+h5py==3.13.0 \
+matplotlib==3.8.4 \
+nibabel==5.3.2 \
+numpy==2.3.1 \
 scipy==1.16.0
 
 # Context
