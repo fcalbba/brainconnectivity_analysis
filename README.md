@@ -2,6 +2,9 @@
 This repository contains a complete pipeline for analyzing brain functional and structural connectivity in subjects undergoing Deep Brain Stimulation (DBS). It evaluates tree experimental conditions: Pre-DBS, Post-DBS ON, and Post-DBS OFF.
 
 # Project structure:
+
+```
+.
 ├── src/                              # Source code
 │   ├── main.py                       # Main script with 3 analysis approaches
 │   ├── io.py                         # Data loading functions (.mat, NIfTI, labels)
@@ -27,7 +30,7 @@ This repository contains a complete pipeline for analyzing brain functional and 
 │   ├── approach1/                    # Modular analysis results
 │   ├── approach2/                    # VTA-based analysis (entropy, mean connectivity)
 │   └── approach3/                    # Motor network connectivity
-
+```
 # Analysis Approaches:
   1. Modular Analysis
   2. VTA Region Analysis
