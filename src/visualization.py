@@ -1,0 +1,326 @@
+"""
+Functions for displaying connectivity matrices and modular results.
+"""
+import matplotlib.pyplot as plt
+import numpy as np
+from nilearn import plotting
+import os
+
+def plot_matrix(matrix, labels=None, title=None, vmax=1.0, vmin=-1.0, reorder=False):
+    """
+    Plots a connectivity matrix with colorbar.
+    """
+    fig, ax = plt.subplots(figsize=(8, 6))
+    plotting.plot_matrix(
+        matrix,
+        labels=labels,
+        axes=ax,
+        colorbar=True,
+        vmax=vmax,
+        vmin=vmin,
+        reorder=reorder,
+        title=title
+    )
+    #numerics tags for each 5 label (for visualization)
+    n = matrix.shape[0]
+    step = 5
+    ticks = list(range(0, n, step))
+    ax.set_xticks(ticks)
+    ax.set_xticklabels([str(t) for t in ticks], rotation=0, fontsize=8, ha='center')
+    ax.set_yticks(ticks)
+    ax.set_yticklabels([str(t) for t in ticks], rotation=0, fontsize=8)
+    plt.tight_layout()
+    return fig
+
+def plot_reordered_matrix(matrix, communities, title=None):
+    """
+    Plots the rearranged matrix according to communities and draws edges.
+    """
+    order = np.argsort(communities)
+    mat_ord = matrix[np.ix_(order, order)]
+    comm_ord = communities[order]
+    boundaries = np.where(np.diff(comm_ord) != 0)[0] + 1
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    im = ax.imshow(mat_ord, cmap='coolwarm', interpolation='nearest')
+    plt.colorbar(im, ax=ax)
+    for b in boundaries:
+        ax.axhline(b - 0.5, color='black', lw=1.5)
+        ax.axvline(b - 0.5, color='black', lw=1.5)
+    if title:
+        ax.set_title(title)
+    ax.axis('off')
+    plt.tight_layout()
+    return fig
+
+def plot_reordered_fc(mat, communities, title):
+    """
+    Wrapper para plot_reordered_matrix con FC.
+    """
+    return plot_reordered_matrix(mat, communities, title)
+
+def plot_module_heatmap(mats: dict[str, np.ndarray], communities):
+    """
+    Draw module vs module connectivity heatmaps for various conditions.
+    """
+    labels_mod = np.unique(communities)
+    n = len(labels_mod)
+    regions = {lab: np.where(communities == lab)[0] for lab in labels_mod}
+    all_matrices = []
+    for cm in mats.values():
+        M = np.zeros((n, n))
+        for i, li in enumerate(labels_mod):
+            for j, lj in enumerate(labels_mod):
+                idx_i, idx_j = regions[li], regions[lj]
+                sub = cm[np.ix_(idx_i, idx_j)]
+                if i == j:
+                    sub = sub[np.triu_indices(len(idx_i), k=1)]
+                M[i, j] = sub.mean() if sub.size else 0
+        all_matrices.append(M)
+    vmin = min(np.min(M) for M in all_matrices)
+    vmax = max(np.max(M) for M in all_matrices)
+
+    fig, axs = plt.subplots(1, len(mats), figsize=(5 * len(mats), 5), sharey=True)
+    for ax, (title, M) in zip(axs, mats.items()):
+        im = ax.imshow(M, cmap='coolwarm', vmin=vmin, vmax=vmax)
+        ax.set_title(title)
+        ax.set_xticks(range(n)); ax.set_xticklabels(labels_mod)
+        ax.set_yticks(range(n)); ax.set_yticklabels(labels_mod)
+        for i in range(n):
+            for j in range(n):
+                ax.text(j, i, f"{M[i,j]:.2f}", ha='center', va='center', fontsize=8)
+    cax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
+    fig.colorbar(im, cax=cax)
+    plt.tight_layout()
+    plt.show()
+    plt.close()
+
+def plot_vta_heatmaps(FCs: dict[str, np.ndarray], labels: list[str]):
+    """
+    Draw VTA submatrices for various conditions.
+    """
+    import matplotlib.pyplot as plt
+    #for each condition, we plot the matrix
+    for title, M in FCs.items():
+        fig, ax = plt.subplots(figsize=(6, 6))
+        im = ax.imshow(M, vmin=-1, vmax=1, cmap='RdBu_r')
+        ax.set_xticks(range(len(labels)))
+        ax.set_xticklabels(labels, rotation=90, fontsize=6)
+        ax.set_yticks(range(len(labels)))
+        ax.set_yticklabels(labels, fontsize=6)
+        ax.set_title(title)
+        cbar = fig.colorbar(im, fraction=0.046, pad=0.04)
+        cbar.set_label('Connectivity')
+        plt.tight_layout()
+        yield fig
+
+
+def plot_motor_blocks_simple(FC, title, region_indices: dict, region_names: list[str]):
+    """
+    Draw blocks of motor subnetworks with averages per block.
+    Now return the figure so that you can save it later.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    #calculation of size and boundaries
+    sizes = [len(region_indices[n]) for n in region_names]
+    boundaries = np.concatenate([[0], np.cumsum(sizes)])
+    #concatenate all the indexes to extract the sub-matrix
+    idx = np.concatenate([region_indices[n] for n in region_names])
+    sub = FC[np.ix_(idx, idx)]
+
+    # creation of fig and axis
+    fig, ax = plt.subplots(figsize=(7, 7))
+
+    #show the submatrx
+    im = ax.imshow(sub, interpolation='nearest', vmin=-1, vmax=1)
+
+    #centered tags
+    ticks = [(boundaries[i] + boundaries[i+1] - 1) / 2 for i in range(len(region_names))]
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(region_names, rotation=45, ha='right', fontsize=12)
+    ax.set_yticks(ticks)
+    ax.set_yticklabels(region_names, fontsize=12)
+
+    #separated lines between modules
+    for b in boundaries[1:-1]:
+        ax.axhline(b - 0.5, color='k', lw=2)
+        ax.axvline(b - 0.5, color='k', lw=2)
+
+    #mean within each module
+    for i in range(len(region_names)):
+        for j in range(len(region_names)):
+            si, ei = int(boundaries[i]), int(boundaries[i+1])
+            sj, ej = int(boundaries[j]), int(boundaries[j+1])
+            block = sub[si:ei, sj:ej]
+            if i == j:
+                # triangular superior sin diagonal
+                vals = block[np.triu_indices(ei-si, k=1)]
+            else:
+                vals = block.flatten()
+            mv = vals.mean() if vals.size else 0
+            ax.text((sj+ej-1)/2, (si+ei-1)/2, f"{mv:.2f}",
+                    ha='center', va='center', fontsize=15, color='k')
+
+    ax.set_title(title)
+    # Colorba+
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label('Correlation')
+
+    plt.tight_layout()
+    return fig
+
+
+def plot_entropy(vta_ts: dict[str, np.ndarray],
+                 entropies: dict[str, list[float]],
+                 labels: list[str],
+                 out_dir: str):
+    """
+    Plots de entropía de Shannon:
+      1) Series temporales por ROI (guardadas en out_dir/entropia-roi/)
+      2) Bar‐plot comparativo (se devuelve fig)
+    """
+    # 1) Series temporales
+    ts_dir = os.path.join(out_dir, 'entropy-rois')
+    os.makedirs(ts_dir, exist_ok=True)
+
+    for i, roi in enumerate(labels):
+        fig, ax = plt.subplots(figsize=(8, 2))
+        for cond, ts in vta_ts.items():
+            ax.plot(ts[i], label=f"{cond} (H={entropies[cond][i]:.2f})")
+        ax.set_title(roi)
+        ax.legend(fontsize=6)
+        fig.tight_layout()
+        fn = roi.replace('/', '_').replace(' ', '_') + '.png'
+        fig.savefig(os.path.join(ts_dir, fn), dpi=300)
+        plt.close(fig)
+
+
+    # 2) Bar‐plot comparativo
+    x = np.arange(len(labels))
+    width = 0.3
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ax.bar(x - width, entropies['pre'],      width, label='Pre-DBS')
+    ax.bar(x,         entropies['post_on'],  width, label='Post-DBS ON')
+    ax.bar(x + width, entropies['post_off'], width, label='Post-DBS OFF')
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=90, fontsize=6)
+    ax.set_ylabel('Shannon Entropy')
+    ax.set_title('Entropy per ROI (VTA)')
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+
+    return fig
+
+
+def plot_positive_mean_per_roi(conds, roi_labels, keep_idx, vta_idx, vta_labels) -> plt.Figure:
+
+    """
+    Dibuja la conectividad media **positiva** para cada ROI VTA
+    en las tres condiciones (pre, post_on, post_off).
+    """
+    data_pos = {}
+    for cond, M in conds.items():
+        vals = []
+        for i in vta_idx:
+            row = M[i, :]
+            row = np.delete(row, i)
+            pos = row[row > 0]
+            vals.append(pos.mean() if pos.size else 0)
+        data_pos[cond] = np.array(vals)
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    x = np.arange(len(vta_idx))
+    ax.plot(x, data_pos['pre'],     '-o', label='Pre-DBS')
+    ax.plot(x, data_pos['post_on'], '-s', label='Post-DBS ON')
+    ax.plot(x, data_pos['post_off'],'-^', label='Post-DBS OFF')
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(vta_labels,
+                       rotation=90, fontsize=8)
+    ax.set_ylabel('Positive mean')
+    ax.set_xlabel('ROIs VTA')
+    ax.set_title('Positive mean connectivity per ROI (VTA)')
+    ax.legend(); ax.grid(True)
+    fig.tight_layout()
+    return fig
+
+
+def plot_negative_mean_per_roi(conds, roi_labels, keep_idx, vta_idx, vta_labels) -> plt.Figure:
+    """
+    Plots the average negativ connectivity for each ROI VTA
+    in the three conditions (pre, post_on, post_off).
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    data_neg = {}
+    for cond, M in conds.items():
+        vals = []
+        for i in vta_idx:
+            row = M[i, :]
+            row = np.delete(row, i)
+            neg = row[row < 0]
+            vals.append(neg.mean() if neg.size else 0)
+        data_neg[cond] = np.array(vals)
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    x = np.arange(len(vta_idx))
+    ax.plot(x, data_neg['pre'],     '-o', label='Pre-DBS')
+    ax.plot(x, data_neg['post_on'], '-s', label='Post-DBS ON')
+    ax.plot(x, data_neg['post_off'],'-^', label='Post-DBS OFF')
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(vta_labels,
+                       rotation=90, fontsize=8)
+    ax.set_ylabel('Negative mean')
+    ax.set_xlabel('ROIs VTA')
+    ax.set_title('Negative mean connectivity (VTA)')
+    ax.legend(); ax.grid(True)
+    fig.tight_layout()
+    return fig
+
+def plot_absolute_change_matrix(mat1: np.ndarray,
+                                mat2: np.ndarray,
+                                labels: list | np.ndarray,
+                                title: str = "") -> plt.Figure:
+    """
+    Plot matrix |mat2 - mat1| with the numbers
+
+    """
+    diff = np.abs(mat2 - mat1)
+    n = diff.shape[0]
+    fig, ax = plt.subplots(figsize=(10,10))
+    im = ax.imshow(diff, cmap='viridis', vmin=0, vmax=diff.max(), aspect='equal')
+
+    ax.set_xticks(np.arange(-.5, n, 1), minor=True)
+    ax.set_yticks(np.arange(-.5, n, 1), minor=True)
+    ax.grid(which='minor', color='w', linestyle='-', linewidth=1)
+
+    #numeric annotations for aach cell
+    for i in range(n):
+        for j in range(n):
+            ax.text(j, i, f"{diff[i,j]:.2f}",
+                    ha='center', va='center', fontsize=10, color='k')
+
+    #axis tags
+    ax.set_xticks(np.arange(n))
+    ax.set_yticks(np.arange(n))
+
+    #better visualization
+    if isinstance(labels, (list, np.ndarray)) and all(isinstance(x, str) for x in labels):
+        ax.set_xticklabels(labels, rotation=90, ha='center', fontsize=10)
+        ax.set_yticklabels(labels, fontsize=10)
+    else:
+        ax.set_xticklabels(labels, rotation=0, fontsize=10)
+        ax.set_yticklabels(labels, fontsize=10)
+
+    ax.set_title(title)
+
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("|Δ connectivity|")
+
+    fig.tight_layout()
+    return fig
+
