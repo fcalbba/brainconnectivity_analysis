@@ -46,6 +46,7 @@ python src/main.py \
 
 # Requirements:
 For obtaining all the necessary Python dependencies required to run the project: pip install -r requirements.txt \
+\
 bctpy==0.6.1 \
 h5py==3.13.0 \
 matplotlib==3.8.4 \
